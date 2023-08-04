@@ -121,7 +121,7 @@ class Game
     Dir.mkdir('saved_games') unless Dir.exist?('saved_games')
 
 
-    if File.exist?("saved_games/#{@file_name}")
+    if !Dir.empty?('saved_games/') && File.exist?("saved_games/#{@file_name}")
       File.open("saved_games/#{@file_name}", 'w') { |file| file.puts(to_json) }
       puts "File saved to:  #{@file_name}"
     else
