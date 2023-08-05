@@ -1,6 +1,28 @@
 require 'json'
 
+module Serializable
+  def to_json
+    JSON.dump ({
+      secret_word: @secret_word,
+      guesses_remaining: @guesses_remaining,
+      revealed_word: @revealed_word,
+      guessed_letters: @guessed_letters,
+    })
+  end
+
+  def from_json(save_game)
+    data = JSON.parse(File.read(save_game))
+
+    @secret_word = data["secret_word"]
+    @guesses_remaining = data["guesses_remaining"]
+    @revealed_word = data["revealed_word"]
+    @guessed_letters = data["guessed_letters"]
+  end
+end
+
 class Game
+  include Serializable
+
   def initialize
     play_game
       File.delete("saved_games/#{@file_name}") if !Dir.empty?('saved_games/') && File.exist?("saved_games/#{@file_name}")
@@ -170,24 +192,6 @@ class Game
     @guesses_remaining = 6
 
     # @file_name == "This file doesn't exist. I'm just doing this to enable autosave functionality"
-  end
-
-  def to_json
-    JSON.dump ({
-      secret_word: @secret_word,
-      guesses_remaining: @guesses_remaining,
-      revealed_word: @revealed_word,
-      guessed_letters: @guessed_letters,
-    })
-  end
-
-  def from_json(save_game)
-    data = JSON.parse(File.read(save_game))
-
-    @secret_word = data["secret_word"]
-    @guesses_remaining = data["guesses_remaining"]
-    @revealed_word = data["revealed_word"]
-    @guessed_letters = data["guessed_letters"]
   end
 end
 
