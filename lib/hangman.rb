@@ -25,7 +25,7 @@ class Game
 
   def initialize
     play_game
-      File.delete("saved_games/#{@file_name}") if !Dir.empty?('saved_games/') && File.exist?("saved_games/#{@file_name}")
+      File.delete("saved_games/#{@file_name}") if File.exist?("saved_games/#{@file_name}") && !File.directory?("saved_games/#{@file_name}")
     play_again
   end
 
@@ -34,12 +34,12 @@ class Game
       puts ' Would you like to continue where you left off?'
       answer = ''
       until %w[y n].include?(answer)
-        print " Enter 'y' to load saved game or 'n' to create new game:  "
+        print " Enter '#{'y'.green}' to load saved game or '#{'n'.blue}' to create new game:  "
         answer = gets.chomp.downcase
       end
       answer == 'y' ? load_game : new_game
     else
-      print "\n  No saved games found. "
+      print "\n  No saved games found."
       new_game
     end
 
@@ -50,9 +50,11 @@ class Game
         guess_word
       elsif letter == 'save'
         save_game
+      elsif letter == 'quit'
+        exit
       else
         update_progress(letter)
-          File.open("saved_games/#{@file_name}", 'w') { |file| file.puts(to_json) } if !Dir.empty?('saved_games/') && File.exist?("saved_games/#{@file_name}")
+          File.open("saved_games/#{@file_name}", 'w') { |file| file.puts(to_json) } if File.exist?("saved_games/#{@file_name}") && !File.directory?("saved_games/#{@file_name}")
       end
     end
   end
@@ -60,12 +62,14 @@ class Game
   def welcome_message
     puts '  Welcome to Hangman!'
     puts '  The computer has randomly selected a secret word.'
-    puts '  Your goal is to guess the secret word the computer has chosen.'
-    puts "\n  When prompted, type one letter and press 'ENTER' to guess a letter."
-    puts '  If you guess a letter incorrectly 6 times, you lose!'
-    puts "\n  You may enter 'guess' at any time to guess the entire word."
-    puts '  But be warned: if you guess the word incorrectly, you lose!'
-    puts "\n  At any time, type 'save' and press 'ENTER' to save your progress for later."
+    puts "  #{'To win the game'.underline}, you must guess the secret word the computer has chosen."
+    puts "\n  To guess a letter, type the letter you'd like to guess and press '#{'ENTER'.blue}'."
+    puts "  The computer will reveal any instance of that letter in the secret word."
+    puts "  If you guess a letter incorrectly #{'6 times'.red}, #{'you lose'.underline}!"
+    puts "\n  You may enter '#{'guess'.green}' at any time to guess the entire word."
+    puts "  #{'But be warned!'.red.italic} If you #{'fail'.red} to guess the word correctly, #{'you lose'.underline}!"
+    puts "\n  At any time, type '#{'save'.green}' and press '#{'ENTER'.blue}' to save your progress for later."
+    puts "\n  You may also type '#{'quit'.red}' at any time to quit the game without saving."
     puts "\n  Good luck!"
   end
 
@@ -76,15 +80,15 @@ class Game
     else
       @secret_word.each_with_index { |character, index| @revealed_word[index] = character if character == letter }
     end
-    puts "\n        Guesses remaining:  #{@guesses_remaining}"
-    puts "             Letters used:  #{@guessed_letters.sort.join(' ')}"
+    puts "\n        Guesses remaining:  #{@guesses_remaining.to_s.red}"
+    puts "             Letters used:  #{@guessed_letters.sort.join(' ').blue}"
   end
 
   def guess_letter
     print "\n  Enter a letter to guess:  "
     letter = gets.chomp.downcase
-    until letter.match(/[a-z]/) && letter.length == 1 || letter == 'guess' || letter == 'save'
-      puts '  Invalid guess! Please enter only one letter.'
+    until letter.match(/[a-z]/) && letter.length == 1 || letter == 'guess' || letter == 'save' || letter == 'quit'
+      puts '  Invalid guess! Please enter exactly one letter.'.italic
       print "\n  Enter a letter to guess:  "
       letter = gets.chomp.downcase
     end
@@ -102,7 +106,7 @@ class Game
     print '  Enter your guess:  '
     guess = gets.chomp.downcase
     until guess.match(/[a-z]/) && !guess.include?(' ')
-      puts '  Invalid guess! Please enter only letters without any spaces.'
+      puts '  Invalid guess! Please enter only letters without any spaces.'.italic
       print '  Enter your guess:  '
       guess = gets.chomp.downcase
     end
@@ -110,8 +114,8 @@ class Game
     if guess.split('') == @secret_word
       puts "\n  You guessed the secret word! You win!"
     else
-      puts "\n  Incorrect! You failed to guess the word! You lose!"
-      puts "  The secret word was: \"#{@secret_word.join}\""
+      puts "\n  Sorry, that is incorrect. You lose!"
+      puts "  The secret word was: \"#{@secret_word.join.italic.blue}\""
     end
     @word_guessed = true
   end
@@ -122,7 +126,7 @@ class Game
       true
     elsif @guesses_remaining <= 0
       puts "\n  All out of guesses! You lose!"
-      puts "  The secret word was:  \"#{@secret_word.join}\""
+      puts "  The secret word was:  \"#{@secret_word.join.italic.blue}\""
       true
     else
       false
@@ -130,10 +134,10 @@ class Game
   end
 
   def play_again
-    puts '  Would you like to play again?'
+    puts "\n  Would you like to play again?".italic
     again = ''
     until %w[y n].include?(again)
-      print "  Enter 'y' to play again or 'n' to quit:  "
+      print "  Enter '#{'y'.green}' to play again or '#{'n'.red}' to quit:  "
       again = gets.chomp.downcase
     end
     again == 'y' ? Game.new : exit
@@ -142,8 +146,7 @@ class Game
   def save_game
     Dir.mkdir('saved_games') unless Dir.exist?('saved_games')
 
-
-    if !Dir.empty?('saved_games/') && File.exist?("saved_games/#{@file_name}")
+    if File.exist?("saved_games/#{@file_name}") && !File.directory?("saved_games/#{@file_name}")
       File.open("saved_games/#{@file_name}", 'w') { |file| file.puts(to_json) }
       puts "File saved to:  #{@file_name}"
     else
@@ -163,23 +166,26 @@ class Game
   end
 
   def load_game
-    sleep(1)
-    puts " Type in the name of the game you'd like to open, or type 'cancel' to start a new game."
-
+    puts " Type in the number of the saved game you'd like to open, or type 'cancel' to start a new game."
     saved_files = Dir.entries('saved_games/')
-    saved_files.each { |file| saved_files.delete(file) if file == '.' || file == '..' }
+    saved_files.sort!.shift(2) # removes '.' and '..' directories
 
-    print ' Saved games:   '
-    puts saved_files.sort.join(' ')
-    print ' Open file: '
-    @file_name = gets.chomp
+    files_hash = {}
+    saved_files.each do |file|
+      files_hash["#{file.split('')[9]}"] = file
+    end
 
-    @file_name == 'cancel' ? new_game : File.open("saved_games/#{@file_name}", 'r') { |file| data = from_json(file) }
-
+    puts ' Saved games:   '
+    files_hash.each { |key, value| puts "   #{key.red}: #{value.blue}"}
+    print '\n Open file: '
+    @file_name = "save_game#{gets.chomp}.json"
+    puts "Opening #{@file_name}..."
+    sleep(1)
+    @file_name == 'save_gamecancel.json' ? new_game : File.open("saved_games/#{@file_name}", 'r') { |file| data = from_json(file) }
   end
 
   def new_game
-    puts "Starting new game...\n\n"
+    puts " Starting new game...\n\n"
     sleep(1)
     welcome_message
 
@@ -190,9 +196,24 @@ class Game
     @guessed_letters = []
     @word_guessed == false
     @guesses_remaining = 6
-
-    # @file_name == "This file doesn't exist. I'm just doing this to enable autosave functionality"
   end
+end
+
+# class defining methods for colorizing output in terminal
+class String
+  def colorize(color_code)
+    "\e[#{color_code}m#{self}\e[0m"
+  end
+
+  def red; colorize(31) end
+  def green; colorize(32) end
+  def yellow; colorize(33) end
+  def blue; colorize(34) end
+  def pink; colorize(35) end
+  def light_blue; colorize(36) end
+
+  def italic;         "\e[3m#{self}\e[23m" end
+  def underline;      "\e[4m#{self}\e[24m" end
 end
 
 Game.new
